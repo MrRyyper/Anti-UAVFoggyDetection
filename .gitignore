@@ -18,12 +18,13 @@ Anti-UAV-RGBT/
 *.avi
 *.png
 *.jpg
-
+prepared_dataset/
 # Generated fog outputs
 *visible_fog*
 *infrared_fog*
 *_fog_*
-
+# yolov5 repo
+yolov5/
 # Large files
 *.zip
 *.tar

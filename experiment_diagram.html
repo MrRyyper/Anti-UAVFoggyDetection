@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Methodology Visualisation</title>
+<link rel="stylesheet" href="style.css"> 
+</head>
+<body>
+
+<!-- GENERAL METHOD  -->
+<div class="general-box">
+  <h2>General Method</h2>
+  <div class="pipeline">
+
+    <div class="pipe-step">
+      <div class="pipe-box s1">
+        <div class="pipe-num">1. Input Data</div>
+        <div class="pipe-title">Anti-UAV300 Dataset</div>
+        <div class="pipe-desc">Clear-sky RGB video sequences with manual bounding-box annotations</div>
+        <div class="pipe-source">Unchanged across all experiments</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+
+    <div class="pipe-step">
+      <div class="pipe-box s2">
+        <div class="pipe-num">2. Fog Generation <span class="star">★</span></div>
+        <div class="pipe-title">Atmospheric Scattering Model</div>
+        <div class="pipe-desc">Applies physical fog model at 3 severity levels (β = 0.01i + 0.05)</div>
+        <div class="pipe-source">From Agarwal et al. 2024</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+
+    <div class="pipe-step">
+      <div class="pipe-box s3">
+        <div class="pipe-num">3. Object Detector <span class="star">★</span></div>
+        <div class="pipe-title">YOLOv5m</div>
+        <div class="pipe-desc">Nano variant - fast inference across all fog levels. Trained on clear / fog-augmented data; evaluated per severity level</div>
+        <div class="pipe-source">Consistent with Munir et al. 2024</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+
+    <div class="pipe-step">
+      <div class="pipe-box s4">
+        <div class="pipe-num">4. Evaluation Metrics <span class="star">★</span></div>
+        <div class="pipe-title">mAP, Precision, Recall</div>
+        <div class="pipe-desc">Measured per fog level and per size category (tiny / small / medium / large)</div>
+        <div class="pipe-source">ΔmAP = mAP<sub>clear</sub> − mAP<sub>fog</sub></div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+
+    <div class="pipe-step">
+      <div class="pipe-box s5">
+        <div class="pipe-num">5. Robustness Analysis <span class="star">★</span></div>
+        <div class="pipe-title">Degradation Curves</div>
+        <div class="pipe-desc">Compare baseline vs fog-aware model across severity levels; size-stratified analysis</div>
+        <div class="pipe-source">Novel contribution</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="feedback">
+    ★ = Novel contribution &nbsp;|&nbsp; Fog variants of each video kept within the same data split to prevent data leakage
+  </div>
+</div>
+
+<!-- connector dots -->
+<div class="connector-row">
+  <div class="connector-line"></div>
+  <div class="connector-line"></div>
+  <div class="connector-line"></div>
+</div>
+
+<!--EXPERIMENT CARDS -->
+<div class="exp-row">
+
+  <!-- E1 -->
+  <div class="exp-card e1">
+    <h3>E1: Clear-Sky Baseline</h3>
+    <div class="exp-sub">Anti-UAV300 · RGB only &nbsp;|&nbsp; <i>Answers RQ baseline</i></div>
+
+    <div class="exp-label">Training setup:</div>
+    <div class="exp-body">YOLO trained exclusively on clear-weather images. Evaluated on unseen clear test set to establish reference mAP.</div>
+
+    <div class="mini-pipe">
+      <div class="mp-box">Clear frames<br>(train split)</div>
+      <div class="mp-arrow">→</div>
+      <div class="mp-box highlight">YOLOv5m<br>detector</div>
+      <div class="mp-arrow">→</div>
+      <div class="mp-box">mAP<sub>clear</sub><br>(reference)</div>
+    </div>
+
+    <div class="exp-label">Limitation:</div>
+    <div class="exp-body">No fog in training data - model has never seen adverse visibility conditions.</div>
+
+    <div class="exp-label green">Addition ★:</div>
+    <div class="exp-body">Size-stratified evaluation (tiny/small/medium/large) reveals which targets are most vulnerable.</div>
+
+    <div class="compare"><b>Compare against:</b> Own fog-degraded results (E2) - clear sky mAP serves as the internal reference baseline</div>
+  </div>
+
+  <!-- E2 -->
+  <div class="exp-card e2">
+    <h3>E2: Fog Robustness Evaluation</h3>
+    <div class="exp-sub">Anti-UAV300 · Synthetic fog &nbsp;|&nbsp; <i>Answers SQ1, SQ2</i></div>
+
+    <div class="exp-label blue">Fog protocol:</div>
+    <div class="exp-body">E1 baseline model evaluated on fog-augmented test set at three representative severity levels: low (i=2), medium (i=5), high (i=9).</div>
+
+    <div class="mini-pipe">
+      <div class="mp-box">Fog frames<br>i ∈ {2,5,9}</div>
+      <div class="mp-arrow">→</div>
+      <div class="mp-box highlight">YOLOv5m<br>(clear-trained)</div>
+      <div class="mp-arrow">→</div>
+      <div class="mp-box">ΔmAP<br>per level</div>
+    </div>
+
+    <div class="exp-label">Limitation:</div>
+    <div class="exp-body">All fog levels treated as equal — no mitigation applied; models not adapted to adverse conditions.</div>
+
+    <div class="exp-label green">Addition ★:</div>
+    <div class="exp-body">Performance degradation plotted as a continuous function of fog density. Tiny UAV sub-analysis highlights disproportionate impact.</div>
+
+    <div class="compare"><b>Compare against:</b> Clear-sky baseline (E1) and Munir et al. 2024 (weather effects on YOLOv5m)</div>
+  </div>
+
+  <!-- E3 -->
+  <div class="exp-card e3">
+    <h3>E3: Fog-Aware Mitigation</h3>
+    <div class="exp-sub">Anti-UAV300 · Clear + Fog mix &nbsp;|&nbsp; <i>Answers SQ3, SQ4</i></div>
+
+    <div class="exp-label orange">Mitigation setup:</div>
+    <div class="exp-body">YOLOv5m retrained on 50:50 mixed dataset (clear + fog-augmented); fog levels sampled uniformly. Validation set mirrors training distribution (50:50 clear + fog) so early stopping and model selection reflect fog-aware performance — not clear-sky performance only.</div>
+
+    <div class="mini-pipe">
+      <div class="mp-box">Clear + Fog<br>50:50 mix</div>
+      <div class="mp-arrow">→</div>
+      <div class="mp-box highlight">YOLOv5m<br>★ fog-aware</div>
+      <div class="mp-arrow">→</div>
+      <div class="mp-box">mAP<sub>fog</sub><br>improved?</div>
+    </div>
+
+    <div class="exp-label">Limitation:</div>
+    <div class="exp-body">Risk of overfitting to synthetic fog patterns; potential clear-sky performance trade-off.</div>
+
+    <div class="exp-label green">Addition ★:</div>
+    <div class="exp-body">Evaluates both fog robustness <i>and</i> clear-sky retention to measure whether gains come at a cost.</div>
+
+    <div class="compare"><b>Compare against:</b> Clear-only YOLO (E1) and fog-degraded baseline (E2)</div>
+  </div>
+
+</div>
+
+<!-- EXPERIMENTAL SETUP-->
+<div class="setup-box">
+  <h2>Experimental Setup</h2>
+  <div class="setup-grid">
+
+    <div class="setup-cell">
+      <h4>Dataset</h4>
+      <ul>
+        <li>Anti-UAV - Jiang et al. 2023</li>
+        <li>318 RGB-T video pairs; <b>RGB only</b> used</li>
+        <li>580k+ manually annotated bounding boxes</li>
+        <li>Split: 160 train / 67 val / 91 test</li>
+        <li>Test set from separate videos (independent)</li>
+        <li>Avg. target size &lt;40px; day &amp; night scenes</li>
+        <li>UAVs: DJI &amp; Parrot; diverse backgrounds</li>
+      </ul>
+    </div>
+
+    <div class="setup-cell">
+      <h4>Fog Generation</h4>
+      <ul>
+        <li>Atmospheric scattering: I(x) = J(x)t(x) + A(1−t(x))</li>
+        <li>β = 0.01i + 0.05, i ∈ {0,…,9}</li>
+        <li>Radial depth prior (no ground truth depth)</li>
+        <li>A = 0.5 (fixed atmospheric light)</li>
+        <li>10 levels per frame; main eval: i = {2, 5, 9}</li>
+      </ul>
+    </div>
+
+    <div class="setup-cell">
+      <h4>Model Architecture</h4>
+      <ul>
+        <li><b>YOLOv5m</b></li>
+        <li>Chosen for fast inference across all fog levels</li>
+        <li>Consistent with Munir et al. 2024 benchmark</li>
+        <li>Trained from scratch per condition</li>
+        <li>Validation: early stopping on val split</li>
+        <li>Input: normalised RGB [0,1] · Single-class: UAV</li>
+      </ul>
+    </div>
+
+    <div class="setup-cell">
+      <h4>Evaluation</h4>
+      <ul>
+        <li>Mean Average Precision (mAP@ 0.5:0.95)</li>
+        <li>Precision &amp; Recall per fog level</li>
+        <li>Size strata: Tiny [2,10), Small [10,30), Medium [30,50), Large [50+)</li>
+        <li>ΔmAP = mAP<sub>clear</sub> − mAP<sub>fog</sub></li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- SOURCE ATTRIBUTIONS -->
+<div class="sources">
+  <b>Anti-UAV dataset</b> (318 RGB-T video pairs, 580k+ manual annotations; 160 train / 67 val / 91 test; avg. target size &lt;40px; day/night, diverse backgrounds): Jiang et al. 2023 - RGB modality only used in this study &nbsp;|&nbsp;
+  <b>Atmospheric scattering model</b> (fog generation formula): Narasimhan &amp; Nayar 2002; Cantor 1978 &nbsp;|&nbsp;
+  <b>Fog severity framework</b> (parametric β control, radial depth prior): Agarwal et al. 2024 &nbsp;|&nbsp;
+  <b>YOLOv5m detector</b> (architecture; adverse weather benchmark): Munir et al. 2024 &nbsp;|&nbsp;
+  <b>Tiny UAV size definition</b> (bounding bod size &lt;10px): Huang et al. 2023

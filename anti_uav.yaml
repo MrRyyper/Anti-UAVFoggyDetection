@@ -1,0 +1,13 @@
+# Anti-UAV RGBT dataset — visible modality only
+# YOLOv5 data configuration
+
+# path: C:\Users\Gur Levy\Desktop\UVA\MASTER\THESIS\thesis-1\prepared_dataset\visible
+path: /home/glevybirkental/thesis-1/prepared_dataset/visible
+train: images/train
+val:   images/val
+test:  images/test
+
+# Classes
+nc: 1
+names:
+  - uav
