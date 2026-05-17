@@ -19,6 +19,7 @@ Anti-UAV-RGBT/
 *.png
 *.jpg
 prepared_dataset/
+runs/
 # Generated fog outputs
 *visible_fog*
 *infrared_fog*
