@@ -23,7 +23,10 @@ runs/
 # Generated fog outputs
 *visible_fog*
 *infrared_fog*
-*_fog_*
+*_fog_*.png
+*_fog_*.jpg
+*_fog_*.mp4
+*_fog_*.avi
 # yolov5 repo
 yolov5/
 # Large files
