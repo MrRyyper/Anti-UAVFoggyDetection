@@ -1,16 +1,21 @@
+# coding: utf-8
 import os
 import random
 import shutil
 from pathlib import Path
 
-# Paths
-BASE = Path("prepared_dataset")
-OUTPUT = Path("prepared_dataset/fog_aware")
-CLEAR_TRAIN = BASE / "visible/images/train"
-FOG_LEVELS = [BASE / f"visible_fog_i0{i}_beta0.{b}/images/train" for i, b in zip([2, 5, 9], ["07", "10", "14"])]
-SEED = 42
-
+BASE   = Path("/scratch-shared/glevybirkental/prepared_dataset")
+OUTPUT = Path("/scratch-shared/glevybirkental/prepared_dataset/fog_aware")
+SEED   = 42
 random.seed(SEED)
+
+CLEAR_TRAIN = BASE / "visible/images/train"
+
+# All 10 fog levels
+FOG_LEVELS = []
+for i in range(10):
+    beta = 0.01 * i + 0.05
+    FOG_LEVELS.append(BASE / f"visible_fog_i{i:02d}_beta{beta:.2f}/images/train")
 
 # Get all clear training images
 clear_images = list(CLEAR_TRAIN.glob("*.jpg"))
@@ -18,16 +23,19 @@ n_clear = len(clear_images)
 print(f"Clear images: {n_clear}")
 
 # Sample equal fog images per level (total fog = total clear)
-n_per_level = n_clear // 3
+n_per_level = n_clear // len(FOG_LEVELS)
 fog_images = []
 for fog_dir in FOG_LEVELS:
+    if not fog_dir.exists():
+        print(f"WARNING: {fog_dir} not found, skipping")
+        continue
     level_images = list(fog_dir.glob("*.jpg"))
     sampled = random.sample(level_images, min(n_per_level, len(level_images)))
     fog_images.extend(sampled)
-    print(f"{fog_dir.name}: sampled {len(sampled)}")
+    print(f"{fog_dir.parent.parent.name}: sampled {len(sampled)}")
 
-print(f"Total fog images: {len(fog_images)}")
-print(f"Total training images: {n_clear + len(fog_images)}")
+print(f"Total fog images   : {len(fog_images)}")
+print(f"Total train images : {n_clear + len(fog_images)}")
 
 # Create output directories
 for split in ["images/train", "labels/train"]:
@@ -47,4 +55,4 @@ for img_path in fog_images:
     if label_path.exists():
         shutil.copy(label_path, OUTPUT / "labels/train" / (img_path.stem + ".txt"))
 
-print("Done — fog_aware training set created.")
+print("Done - fog_aware training set created.")

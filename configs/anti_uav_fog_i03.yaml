@@ -1,0 +1,10 @@
+# Anti-UAV RGBT dataset - visible modality only
+# YOLOv5 data configuration
+path: /scratch-shared/glevybirkental/prepared_dataset/visible_fog_i03_beta0.08
+train: images/train
+val:   images/val
+test:  images/test
+# Classes
+nc: 1
+names:
+  - uav

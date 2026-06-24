@@ -1,0 +1,19 @@
+Total instances analysed : 280,067
+Total sequences analysed : 318
+
+--- Pooled correlation (all instances) ---
+Pearson r            : -0.0854   p = 0.0000e+00
+Spearman rho         : -0.0934   p = 0.0000e+00
+Variance explained   : 0.73% (r^2)
+
+--- Per-sequence correlation (removes zoom bias) ---
+Mean r across seqs   : -0.0519
+Median r across seqs : -0.0392
+Sequences with r < 0 : 63.2%
+
+Interpretation:
+  Negative r/rho -> larger boxes near centre (supports radial prior)
+  Pooled r^2 < 1% -> prior explains almost no variance in scale
+  Per-sequence analysis removes between-sequence zoom/distance bias
+  Majority of sequences with r < 0 supports directional consistency
+  Overall: weak empirical support; prior best treated as heuristic
