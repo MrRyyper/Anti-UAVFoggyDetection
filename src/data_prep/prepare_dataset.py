@@ -1,21 +1,9 @@
-# coding: utf-8
-"""
-prepare_dataset.py
-------------------
-Organises extracted frames into YOLOv5-ready prepared_dataset structure.
+"""Organise extracted frames into a YOLOv5-ready dataset.
 
-Reads frames from:  framecuts/{split}/{sequence}/{variant}/
-Writes images to:   prepared_dataset/{variant}/images/{split}/
-Writes labels to:   prepared_dataset/{variant}/labels/{split}/
+framecuts/{split}/{sequence}/{variant}/  ->  prepared_dataset/{variant}/{images,labels}/{split}/
 
-Each fog variant gets its own subfolder so yaml files can point
-to any condition independently.
-
-Labels are identical across fog variants (fog does not change bounding boxes).
-Skips files that already exist.
-
-Usage:
-    python prepare_dataset.py
+Each fog variant gets its own subfolder. Labels are identical across variants
+(fog does not move the bounding boxes). Existing files are skipped.
 """
 
 import os
@@ -24,9 +12,10 @@ import json
 import shutil
 import cv2
 
-RAW_ROOT      = "/gpfs/home4/glevybirkental/thesis-1/Anti-UAV-RGBT"
-FRAMECUT_ROOT = "/scratch-shared/glevybirkental/framecuts"
-OUT_ROOT      = "/scratch-shared/glevybirkental/prepared_dataset"
+REPO_ROOT     = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+RAW_ROOT      = os.path.join(REPO_ROOT, "Anti-UAV-RGBT")
+FRAMECUT_ROOT = os.path.join(REPO_ROOT, "framecuts")
+OUT_ROOT      = os.path.join(REPO_ROOT, "prepared_dataset")
 SPLITS        = ["train", "val", "test"]
 
 
@@ -36,12 +25,10 @@ def process_variant(frames_dir, ann, img_dir, lbl_dir, seq_name):
 
     frames = sorted(glob.glob(os.path.join(frames_dir, "*.jpg")))
     if not frames:
-        print(f"    [skip] no frames in {frames_dir}")
         return 0
 
     first = cv2.imread(frames[0])
     if first is None:
-        print(f"    [skip] could not read first frame in {frames_dir}")
         return 0
     img_h, img_w = first.shape[:2]
 
@@ -53,7 +40,6 @@ def process_variant(frames_dir, ann, img_dir, lbl_dir, seq_name):
         img_out = os.path.join(img_dir, stem + ".jpg")
         lbl_out = os.path.join(lbl_dir, stem + ".txt")
 
-        # skip if both already exist
         if os.path.exists(img_out) and os.path.exists(lbl_out):
             continue
 
@@ -78,7 +64,6 @@ def process_variant(frames_dir, ann, img_dir, lbl_dir, seq_name):
 def process_sequence(seq_framecut_dir, seq_raw_dir, split, seq_name):
     ann_path = os.path.join(seq_raw_dir, "visible.json")
     if not os.path.exists(ann_path):
-        print(f"  [skip] no visible.json: {seq_name}")
         return
 
     with open(ann_path) as f:
@@ -103,20 +88,15 @@ def main():
     for split in SPLITS:
         fc_split_dir  = os.path.join(FRAMECUT_ROOT, split)
         raw_split_dir = os.path.join(RAW_ROOT, split)
-
         if not os.path.isdir(fc_split_dir):
-            print(f"[warn] framecuts not found for split: {split}")
             continue
 
-        print(f"\n=== {split} ===")
+        print(f"=== {split} ===")
         for seq_name in sorted(os.listdir(fc_split_dir)):
             seq_fc_dir  = os.path.join(fc_split_dir, seq_name)
             seq_raw_dir = os.path.join(raw_split_dir, seq_name)
             if os.path.isdir(seq_fc_dir):
                 process_sequence(seq_fc_dir, seq_raw_dir, split, seq_name)
-
-    print("\nDataset preparation complete.")
-    print(f"Output: {OUT_ROOT}")
 
 
 if __name__ == "__main__":

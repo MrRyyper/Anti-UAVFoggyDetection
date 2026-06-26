@@ -1,22 +1,13 @@
-# coding: utf-8
-"""
-extract_results.py
-------------------
-Parses YOLOv5 val.py log files and extracts results into a clean CSV.
-
-The runs appear in the log in the same order as the inference script.
-This script maps them accordingly.
-
-Place in ~/thesis-1/ and run:
-    python extract_results.py
-"""
+"""Parse YOLOv5 val.py log files into a CSV, mapping each logged run to its
+condition by position (same order as the inference scripts)."""
 
 import re
 import csv
 from pathlib import Path
 
-LOGS_DIR = Path.home() / "logs"
-OUT_DIR  = Path.home() / "thesis-1" / "results" / "metrics"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+LOGS_DIR = REPO_ROOT / "logs"
+OUT_DIR  = REPO_ROOT / "results" / "metrics"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Order must match submit_inference_baseline.sh

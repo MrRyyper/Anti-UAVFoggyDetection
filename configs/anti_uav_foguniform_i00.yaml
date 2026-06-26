@@ -1,0 +1,6 @@
+path: /scratch-shared/glevybirkental/prepared_dataset/visible_foguniform_i00_beta0.05
+train: images/test
+val: images/test
+test: images/test
+nc: 1
+names: ['uav']

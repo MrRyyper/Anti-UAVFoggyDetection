@@ -1,0 +1,7 @@
+path: /scratch-shared/glevybirkental/prepared_dataset/fog_aware_all
+train: images/train
+val:   images/val
+test:  /scratch-shared/glevybirkental/prepared_dataset/visible/images/test
+nc: 1
+names:
+  - uav

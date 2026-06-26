@@ -1,30 +1,12 @@
-# coding: utf-8
-"""
-radial_prior_analysis.py
-------------------------
-Analyses whether bounding box size correlates with distance from image center
-across the Anti-UAV300 RGB annotation files.
-
-Outputs (saved to ./radial_analysis/)
---------------------------------------
-- radial_prior_scatter.png          : scatter of bbox size vs radial distance
-- radial_prior_binned.png           : mean bbox size per radial distance bin
-- radial_prior_within_seq.png       : distribution of per-sequence correlations
-- radial_prior_heatmap_by_size.png  : spatial heatmap of tiny vs large targets
-- radial_prior_stats.txt            : all statistics
-
-Place this script inside thesis-1/ and run:
-    python radial_prior_analysis.py
-"""
+"""Pooled and per-sequence correlation of UAV bbox size vs radial distance,
+plus a spatial heatmap by size category."""
 
 import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 from scipy import stats
 
-# Config
 _HERE     = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 ANN_DIR   = os.path.join(REPO_ROOT, "Anti-UAV-RGBT")
@@ -33,22 +15,15 @@ IMG_W     = 1920
 IMG_H     = 1080
 OUT_DIR   = os.path.join(REPO_ROOT, "results", "figures", "radial")
 
-# Size thresholds (geometric mean scale sqrt(w*h) in pixels) -- matches thesis:
-#   tiny [0,10), small [10,50), medium [50,90), large [90, inf)
+# size thresholds on geometric-mean scale sqrt(w*h), px:
+# tiny [0,10), small [10,50), medium [50,90), large [90, inf)
 TINY_MAX   = 10
 SMALL_MAX  = 50
 MEDIUM_MAX = 90
-# >= 90 = large
 
 
-# Annotation loading
 def load_annotations():
-    """
-    Returns:
-        all_instances : list of dicts with keys:
-                        scale, dist, bx_norm, by_norm, seq_id
-        seq_data      : dict seq_id -> list of (scale, dist)
-    """
+    """Return (all_instances, seq_data) keyed by sequence."""
     all_instances = []
     seq_data      = {}
     seq_id        = 0
@@ -108,7 +83,6 @@ def load_annotations():
     return all_instances, seq_data
 
 
-# Plot 1: scatter (pooled)
 def plot_scatter(instances):
     scales = np.array([i["scale"] for i in instances])
     dists  = np.array([i["dist"]  for i in instances])
@@ -132,7 +106,6 @@ def plot_scatter(instances):
     return r, p
 
 
-# Plot 2: binned (pooled)
 def plot_binned(instances, n_bins=10):
     scales = np.array([i["scale"] for i in instances])
     dists  = np.array([i["dist"]  for i in instances])
@@ -160,7 +133,6 @@ def plot_binned(instances, n_bins=10):
     ax.errorbar(bin_centres, means, yerr=stds, fmt="none",
                 color="black", capsize=4)
 
-    # annotate with instance counts
     for bar, count in zip(bars, counts):
         ax.text(bar.get_x() + bar.get_width() / 2, 2,
                 str(count), ha="center", va="bottom",
@@ -177,20 +149,14 @@ def plot_binned(instances, n_bins=10):
     print(f"Saved: {out}")
 
 
-# Plot 3: per-sequence correlation distribution
+# per-sequence correlation distribution (removes between-sequence zoom bias)
 def plot_within_seq(seq_data):
-    """
-    Compute Pearson r between scale and radial dist within each sequence.
-    Plot distribution of per-sequence r values.
-    This removes between-sequence zoom bias.
-    """
     r_values = []
     for seq_id, instances in seq_data.items():
         if len(instances) < 10:
             continue
         scales = np.array([s for s, d in instances])
         dists  = np.array([d for s, d in instances])
-        # skip if no variance
         if scales.std() < 1e-6 or dists.std() < 1e-6:
             continue
         r, _ = stats.pearsonr(dists, scales)
@@ -221,12 +187,8 @@ def plot_within_seq(seq_data):
     return mean_r, median_r, pct_neg, len(r_values)
 
 
-# Plot 4: spatial heatmap by size category
+# spatial heatmap: tiny vs large targets
 def plot_heatmap_by_size(instances, grid=50):
-    """
-    2D spatial heatmap showing where tiny vs large targets appear.
-    Tiny = scale < TINY_MAX (10px); Large = scale >= MEDIUM_MAX (90px).
-    """
     tiny  = [i for i in instances if i["scale"] <  TINY_MAX]
     small = [i for i in instances if TINY_MAX  <= i["scale"] < SMALL_MAX]
     med   = [i for i in instances if SMALL_MAX <= i["scale"] < MEDIUM_MAX]
@@ -247,10 +209,8 @@ def plot_heatmap_by_size(instances, grid=50):
         bx = np.array([i["bx_norm"] for i in subset])
         by = np.array([i["by_norm"] for i in subset])
 
-        heatmap, xedges, yedges = np.histogram2d(
-            bx, by, bins=grid, range=[[0, 1], [0, 1]]
-        )
-        heatmap = heatmap.T  # transpose for imshow
+        heatmap, _, _ = np.histogram2d(bx, by, bins=grid, range=[[0, 1], [0, 1]])
+        heatmap = heatmap.T
 
         im = ax.imshow(heatmap, origin="upper", cmap=cmap,
                        extent=[0, 1, 1, 0], aspect="auto")
@@ -258,7 +218,6 @@ def plot_heatmap_by_size(instances, grid=50):
         ax.set_ylabel("Normalised y")
         ax.set_title(f"{title}\n(n = {len(subset):,})")
 
-        # mark image centre
         ax.plot(0.5, 0.5, "y+", markersize=15, markeredgewidth=2,
                 label="Image centre")
         ax.legend(loc="upper right", fontsize=8)
@@ -272,7 +231,6 @@ def plot_heatmap_by_size(instances, grid=50):
     plt.close(fig)
     print(f"Saved: {out}")
 
-    # also print size breakdown
     print(f"\nSize breakdown:")
     print(f"  Tiny   (< {TINY_MAX}px)        : {len(tiny):,}")
     print(f"  Small  ({TINY_MAX}-{SMALL_MAX}px)      : {len(small):,}")
@@ -280,7 +238,6 @@ def plot_heatmap_by_size(instances, grid=50):
     print(f"  Large  (>= {MEDIUM_MAX}px)       : {len(large):,}")
 
 
-# Stats file
 def save_stats(instances, seq_data, pooled_r, pooled_p,
                mean_r_seq, median_r_seq, pct_neg, n_seqs):
 
@@ -318,13 +275,8 @@ def save_stats(instances, seq_data, pooled_r, pooled_p,
     print(f"\nSaved: {out}")
 
 
-# Main
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-
-    print(f"Loading annotations from : {ANN_DIR}")
-    print(f"Splits                   : {SPLITS}")
-
     instances, seq_data = load_annotations()
 
     if len(instances) == 0:

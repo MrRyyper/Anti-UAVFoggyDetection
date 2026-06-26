@@ -1,36 +1,10 @@
 #!/usr/bin/env python3
-# coding: utf-8
-"""
-size_stratified_eval.py
------------------------
-Compute RECALL stratified by UAV size category for a YOLOv5m model across all
-fog severity levels (answers SQ2 / H2).
+"""Recall stratified by UAV size category for a YOLOv5m model across all fog
+levels. Predictions are matched to GT and bucketed by GT size (geometric-mean
+scale sqrt(w*h): tiny [0,10), small [10,50), medium [50,90), large [90,inf)).
+GT is identical across fog levels; only predictions change.
 
-Why this is needed: YOLOv5 val.py reports only aggregate metrics. Size-stratified
-recall requires per-box predictions matched to ground truth and bucketed by GT
-size. Fog is applied post-hoc, so GT is identical across fog levels; only the
-predictions change per level.
-
-Size categories (geometric mean scale s = sqrt(w_px * h_px)), matching the thesis:
-    tiny   [0, 10)
-    small  [10, 50)
-    medium [50, 90)
-    large  [90, inf)
-
-Output: one CSV row per condition (clear + each fog level) with per-category
-GT count, detected count, and recall, plus an overall row.
-
-Diagnostic modes:
-    --list   list the dataset folders found (+ image counts), then exit
-    --scan   print the GT size-category distribution for the test split, then exit
-             (use this first: the 27 tiny instances are across the WHOLE RGB set;
-              the test split has fewer, which is why tiny recall is coarse)
-
-Run inside the yolo venv on a GPU node:
-    module load 2023 Python/3.11.3-GCCcore-12.3.0 CUDA/12.1.1
-    source $HOME/envs/yolo/bin/activate
-    python size_stratified_eval.py            # full run
-    python size_stratified_eval.py --scan     # inspect GT size distribution first
+Modes: --list (dataset folders), --scan (GT size distribution), default (run).
 """
 
 import argparse
@@ -42,12 +16,12 @@ import sys
 import cv2
 import torch
 
-# ============================ CONFIG ============================
-YOLOV5_DIR = os.path.expanduser("~/thesis-1/yolo/yolov5")
-WEIGHTS    = os.path.expanduser("~/thesis-1/yolo/yolov5/runs/train/results8/weights/best.pt")
+REPO_ROOT  = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+YOLOV5_DIR = os.path.join(REPO_ROOT, "yolov5")
+WEIGHTS    = os.path.join(YOLOV5_DIR, "runs", "train", "results8", "weights", "best.pt")
 # For the fog-aware model, point WEIGHTS at its best.pt and change OUT_CSV.
 
-DATA_BASE    = "/scratch-shared/glevybirkental/prepared_dataset"
+DATA_BASE    = os.path.join(REPO_ROOT, "prepared_dataset")
 CLEAR_FOLDER = "visible"                # clear-sky test set
 FOG_GLOB     = "visible_fog_i*_beta*"   # per-level fog folders
 SPLIT        = "test"                   # images/<SPLIT>, labels/<SPLIT>
@@ -66,8 +40,7 @@ SIZE_BINS = [
     ("large",  90,  1e9),
 ]
 
-OUT_CSV = os.path.expanduser("~/thesis-1/results/metrics/size_stratified_recall.csv")
-# ================================================================
+OUT_CSV = os.path.join(REPO_ROOT, "results", "metrics", "size_stratified_recall.csv")
 
 
 def list_images(folder):

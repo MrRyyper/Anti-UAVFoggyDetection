@@ -1,31 +1,18 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-failure_mechanisms_analysis.py
-
-Three failure-mechanism analyses for baseline + fog-aware models across all
-11 conditions (clear + fog_i00..i09), computed from a single GT-matching pass:
-
-  1. Confidence distribution of TRUE-POSITIVE detections (does fog suppress
-     the confidence of correct detections?)
-  2. False-positive rate  FP / (TP + FP)  (does fog cause spurious boxes?)
-  3. IoU stability of true positives (are surviving detections well localized?)
-
-Reads YOLOv5 COCO-format best_predictions.json (list of
-{image_id, category_id, bbox:[x,y,w,h]px, score}) and matches against
-YOLO-normalised GT label files.
-"""
+"""Three failure-mechanism analyses (TP confidence, FP rate, IoU stability) for
+the baseline and fog-aware models across clear + fog_i00..i09, from a single
+GT-matching pass over YOLOv5 COCO best_predictions.json files."""
 
 import json, glob, os
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# ============================ CONFIG =======================================
-VAL_DIR       = Path.home() / "thesis-1" / "yolo" / "yolov5" / "runs" / "val"
-GT_LABELS_DIR = Path("/scratch-shared/glevybirkental/prepared_dataset/visible/labels/test")
-OUT_DIR       = Path.home() / "thesis-1" / "results" / "figures"   # PNG figures
-CSV_DIR       = Path.home() / "thesis-1" / "results" / "metrics"   # summary CSV
+REPO_ROOT     = Path(__file__).resolve().parents[2]
+VAL_DIR       = REPO_ROOT / "yolov5" / "runs" / "val"
+GT_LABELS_DIR = REPO_ROOT / "prepared_dataset" / "visible" / "labels" / "test"
+OUT_DIR       = REPO_ROOT / "results" / "figures"   # PNG figures
+CSV_DIR       = REPO_ROOT / "results" / "metrics"   # summary CSV
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 CSV_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -35,12 +22,11 @@ IOU_THRES     = 0.50            # IoU needed to count a prediction as a TP
 
 FOG_LEVELS = ['clear'] + [f'fog_i{i:02d}' for i in range(10)]
 
-# Folder-name prefixes per model (latest matching folder is auto-selected)
+# folder-name prefixes per model (latest matching folder is auto-selected)
 PREFIX = {
     'baseline': {'clear': 'clear',                   'fog': 'fog_i{ii}'},
     'fogaware': {'clear': 'fogaware_mixedval_clear', 'fog': 'fogaware_mixedval_fog_i{ii}'},
 }
-# ===========================================================================
 
 
 def latest_run_folder(prefix):
@@ -136,10 +122,10 @@ def main():
         for level in FOG_LEVELS:
             folder = run_folder(model, level)
             if folder is None:
-                print(f"  x {model} {level}: no folder found"); continue
+                print(f"  {model} {level}: no folder found"); continue
             pred_file = folder / "best_predictions.json"
             if not pred_file.exists():
-                print(f"  x {model} {level}: best_predictions.json missing in {folder.name}"); continue
+                print(f"  {model} {level}: best_predictions.json missing in {folder.name}"); continue
             tp_conf, tp_iou, n_tp, n_fp = match_condition(pred_file, gt)
             fp_rate = n_fp / (n_tp + n_fp) if (n_tp + n_fp) else 0.0
             stats[model][level] = {
@@ -149,7 +135,7 @@ def main():
                 'iou_std':  float(np.std(tp_iou))  if tp_iou else np.nan,
                 'conf_mean': float(np.mean(tp_conf)) if tp_conf else np.nan,
             }
-            print(f"  ok {model:9s} {level:8s} [{folder.name:28s}] "
+            print(f"  {model:9s} {level:8s} [{folder.name:28s}] "
                   f"TP={n_tp:5d} FP={n_fp:5d} FPrate={fp_rate:.3f} "
                   f"IoU={stats[model][level]['iou_mean']:.3f}")
 
@@ -172,7 +158,7 @@ def main():
     fig.tight_layout(rect=[0, 0.02, 1, 0.96])
     fig.savefig(OUT_DIR / "confidence_distributions.png", dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print(f"\nok Saved: {OUT_DIR / 'confidence_distributions.png'}")
+    print(f"\nSaved: {OUT_DIR / 'confidence_distributions.png'}")
 
     # Figure 2: FP rate
     x = np.arange(len(FOG_LEVELS)); width = 0.38
@@ -188,7 +174,7 @@ def main():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "fp_rate_analysis.png", dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print(f"ok Saved: {OUT_DIR / 'fp_rate_analysis.png'}")
+    print(f"Saved: {OUT_DIR / 'fp_rate_analysis.png'}")
 
     # Figure 3: IoU stability
     fig, ax = plt.subplots(figsize=(13, 6))
@@ -205,7 +191,7 @@ def main():
     fig.tight_layout()
     fig.savefig(OUT_DIR / "iou_stability.png", dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print(f"ok Saved: {OUT_DIR / 'iou_stability.png'}")
+    print(f"Saved: {OUT_DIR / 'iou_stability.png'}")
 
     # CSV summary
     csv_path = CSV_DIR / "failure_mechanisms_summary.csv"
@@ -218,7 +204,7 @@ def main():
                     continue
                 f.write(f"{model},{level},{s['n_tp']},{s['n_fp']},{s['fp_rate']:.4f},"
                         f"{s['iou_mean']:.4f},{s['iou_std']:.4f},{s['conf_mean']:.4f}\n")
-    print(f"ok Saved: {csv_path}")
+    print(f"Saved: {csv_path}")
 
 
 if __name__ == "__main__":

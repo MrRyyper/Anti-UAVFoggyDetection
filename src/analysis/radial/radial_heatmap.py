@@ -1,25 +1,10 @@
-# coding: utf-8
-"""
-radial_heatmap.py
------------------
-Spatial density heatmaps + radial-prior analysis for Anti-UAV-RGBT annotations.
-
-Outputs (saved next to this script):
-    radial_heatmap.png              – 2-D spatial heatmaps: Tiny vs Large
-    radial_prior_scatter.png        – bbox scale vs radial distance (pooled)
-    radial_prior_binned.png         – mean bbox scale per radial distance bin
-    radial_prior_within_seq.png     – per-sequence correlation distribution
-
-Run from any directory:
-    python radial_analysis/radial_heatmap.py
-"""
+"""Spatial density heatmaps and radial-prior analysis for Anti-UAV-RGBT."""
 
 import os, json
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
-# ── Paths ────────────────────────────────────────────────────────────────────
 _HERE     = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 ANN_DIR   = os.path.join(REPO_ROOT, "Anti-UAV-RGBT")
@@ -29,21 +14,15 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 IMG_W, IMG_H = 1920, 1080
 
-# Size thresholds  (geometric mean scale = sqrt(w*h), pixels)
-TINY_MAX   = 10    # scale < 10            → Tiny
-SMALL_MAX  = 50    # 10 <= scale < 50      → Small
-MEDIUM_MAX = 90    # 50 <= scale < 90      → Medium  /  >= 90 → Large
+# size thresholds on geometric-mean scale sqrt(w*h), px: tiny/small/medium/large
+TINY_MAX   = 10
+SMALL_MAX  = 50
+MEDIUM_MAX = 90
+GRID = 50          # heatmap bins per axis
 
-GRID = 50          # heatmap resolution (bins per axis)
 
-
-# ── Data loading ─────────────────────────────────────────────────────────────
 def load_annotations():
-    """
-    Returns:
-        all_instances : list of dicts  {scale, dist, bx_norm, by_norm, seq_id}
-        seq_data      : dict  seq_id -> list of (scale, dist)
-    """
+    """Return (all_instances, seq_data) keyed by sequence."""
     all_instances = []
     seq_data      = {}
     seq_id        = 0
@@ -54,7 +33,7 @@ def load_annotations():
     for split in SPLITS:
         split_dir = os.path.join(ANN_DIR, split)
         if not os.path.isdir(split_dir):
-            print(f"WARNING: not found – {split_dir}")
+            print(f"WARNING: not found - {split_dir}")
             continue
         for root, _, files in os.walk(split_dir):
             if "visible.json" not in files:
@@ -96,14 +75,14 @@ def load_annotations():
     return all_instances, seq_data
 
 
-# ── Plot 1: spatial heatmap (Tiny+Small vs Medium+Large) ─────────────────────
+# spatial heatmap: Tiny+Small vs Medium+Large
 def plot_heatmap(instances):
     small = [i for i in instances if i["scale"] <  SMALL_MAX]
     large = [i for i in instances if i["scale"] >= SMALL_MAX]
 
     categories = [
         (small, f"Tiny + Small (scale < {SMALL_MAX}px)",    "Blues"),
-        (large, f"Medium + Large (scale ≥ {SMALL_MAX}px)", "Reds"),
+        (large, f"Medium + Large (scale $\\geq$ {SMALL_MAX}px)", "Reds"),
     ]
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -139,7 +118,7 @@ def plot_heatmap(instances):
     print(f"Saved: {out}")
 
 
-# ── Plot 2: scatter – scale vs radial distance (pooled) ──────────────────────
+# scatter: scale vs radial distance (pooled)
 def plot_scatter(instances):
     scales = np.array([i["scale"] for i in instances])
     dists  = np.array([i["dist"]  for i in instances])
@@ -147,14 +126,14 @@ def plot_scatter(instances):
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.scatter(dists, scales, alpha=0.10, s=3, color="steelblue")
     ax.set_xlabel("Normalised radial distance from image centre")
-    ax.set_ylabel("Bounding box scale  sqrt(w·h)  [px]")
+    ax.set_ylabel("Bounding box scale  $\\sqrt{w \\cdot h}$  [px]")
     ax.set_title("UAV bounding box scale vs radial distance (pooled)")
 
     m, b, r, p, _ = stats.linregress(dists, scales)
     rho, p_s = stats.spearmanr(dists, scales)
     x_line = np.linspace(0, 1, 100)
     ax.plot(x_line, m * x_line + b, color="crimson", linewidth=2,
-            label=f"Pearson r = {r:.3f}  (p = {p:.2e})\nSpearman ρ = {rho:.3f}  (p = {p_s:.2e})")
+            label=f"Pearson r = {r:.3f}  (p = {p:.2e})\nSpearman $\\rho$ = {rho:.3f}  (p = {p_s:.2e})")
     ax.legend()
     fig.tight_layout()
 
@@ -165,7 +144,7 @@ def plot_scatter(instances):
     return r, p, rho, p_s
 
 
-# ── Plot 3: binned mean scale per radial-distance bin ────────────────────────
+# binned mean scale per radial-distance bin
 def plot_binned(instances, n_bins=10):
     scales = np.array([i["scale"] for i in instances])
     dists  = np.array([i["dist"]  for i in instances])
@@ -199,7 +178,7 @@ def plot_binned(instances, n_bins=10):
                 fontsize=7, color="white", rotation=90)
 
     ax.set_xlabel("Normalised radial distance from image centre")
-    ax.set_ylabel("Mean bounding box scale  sqrt(w·h)  [px]")
+    ax.set_ylabel("Mean bounding box scale  $\\sqrt{w \\cdot h}$  [px]")
     ax.set_title("Mean UAV scale per radial distance bin  (n per bar shown)")
     ax.legend()
     fig.tight_layout()
@@ -210,7 +189,7 @@ def plot_binned(instances, n_bins=10):
     print(f"Saved: {out}")
 
 
-# ── Plot 4: per-sequence Pearson r distribution ───────────────────────────────
+# per-sequence Pearson r distribution
 def plot_within_seq(seq_data):
     r_values   = []
     rho_values = []
@@ -237,7 +216,7 @@ def plot_within_seq(seq_data):
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     for ax, vals, label, color in [
         (axes[0], r_values,   "Pearson r",   "steelblue"),
-        (axes[1], rho_values, "Spearman ρ",  "mediumseagreen"),
+        (axes[1], rho_values, "Spearman $\\rho$",  "mediumseagreen"),
     ]:
         mean_v   = np.mean(vals)
         median_v = np.median(vals)
@@ -262,9 +241,7 @@ def plot_within_seq(seq_data):
     return mean_r, median_r, mean_rho, median_rho, pct_neg, len(r_values)
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print(f"Loading annotations from: {ANN_DIR}")
     instances, seq_data = load_annotations()
 
     if not instances:
@@ -277,9 +254,9 @@ if __name__ == "__main__":
         med   = [i for i in instances if SMALL_MAX <= i["scale"] < MEDIUM_MAX]
         large = [i for i in instances if i["scale"] >= MEDIUM_MAX]
         print(f"  Tiny   (< {TINY_MAX}px)            : {len(tiny):,}")
-        print(f"  Small  ({TINY_MAX}–{SMALL_MAX}px)          : {len(small):,}")
-        print(f"  Medium ({SMALL_MAX}–{MEDIUM_MAX}px)         : {len(med):,}")
-        print(f"  Large  (≥ {MEDIUM_MAX}px)           : {len(large):,}\n")
+        print(f"  Small  ({TINY_MAX}-{SMALL_MAX}px)          : {len(small):,}")
+        print(f"  Medium ({SMALL_MAX}-{MEDIUM_MAX}px)         : {len(med):,}")
+        print(f"  Large  (>= {MEDIUM_MAX}px)           : {len(large):,}\n")
 
         plot_heatmap(instances)
         r, p, rho, p_s = plot_scatter(instances)
@@ -288,7 +265,7 @@ if __name__ == "__main__":
 
         print(f"\n--- Summary ---")
         print(f"Pooled Pearson r       : {r:.4f}  (p = {p:.2e})")
-        print(f"Pooled Spearman ρ      : {rho:.4f}  (p = {p_s:.2e})")
+        print(f"Pooled Spearman rho    : {rho:.4f}  (p = {p_s:.2e})")
         print(f"Per-seq mean r         : {mean_r:.4f}    median r   : {median_r:.4f}")
-        print(f"Per-seq mean ρ         : {mean_rho:.4f}    median ρ   : {median_rho:.4f}")
+        print(f"Per-seq mean rho       : {mean_rho:.4f}    median rho : {median_rho:.4f}")
         print(f"Seqs with r < 0        : {pct_neg:.1f}%  ({n_seqs} seqs total)")

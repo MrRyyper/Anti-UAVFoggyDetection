@@ -1,23 +1,10 @@
-# coding: utf-8
-"""
-size_distribution.py
---------------------
-Plots the overall bounding-box scale distribution with size-category boundaries
-and a per-split instance count breakdown.
-
-Outputs (saved next to this script):
-    size_distribution.png
-
-Run from any directory:
-    python radial_analysis/size_distribution.py
-"""
+"""Bounding-box scale distribution with size-category boundaries and a
+per-split instance count breakdown."""
 
 import os, json
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
-# ── Paths (resolved relative to this file) ──────────────────────────────────
 _HERE     = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 ANN_DIR   = os.path.join(REPO_ROOT, "Anti-UAV-RGBT")
@@ -25,17 +12,17 @@ SPLITS    = ["train", "val", "test"]
 OUT_DIR   = os.path.join(REPO_ROOT, "results", "figures", "radial")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# ── Size thresholds on geometric-mean scale  sqrt(w*h)  in pixels ───────────
+# size thresholds on geometric-mean scale sqrt(w*h), px (>= 90 -> Large)
 TINY_MAX   = 10
 SMALL_MAX  = 50
-MEDIUM_MAX = 90   # >= 90 → Large
+MEDIUM_MAX = 90
 
 BOUNDARIES = [TINY_MAX, SMALL_MAX, MEDIUM_MAX]
 REGIONS = [
     ("Tiny",   0,          TINY_MAX),
     ("Small",  TINY_MAX,   SMALL_MAX),
     ("Medium", SMALL_MAX,  MEDIUM_MAX),
-    ("Large",  MEDIUM_MAX, 280),          # 280 px ≈ upper end of dataset
+    ("Large",  MEDIUM_MAX, 280),
 ]
 REGION_COLORS = ["#4393c3", "#92c5de", "#f4a582", "#d6604d"]
 
@@ -50,14 +37,13 @@ def size_category(scale):
     return "Large"
 
 
-# ── Data loading ─────────────────────────────────────────────────────────────
 def load_scales():
     """Return list of (split, scale) for every valid annotated frame."""
     records = []
     for split in SPLITS:
         split_dir = os.path.join(ANN_DIR, split)
         if not os.path.isdir(split_dir):
-            print(f"WARNING: not found – {split_dir}")
+            print(f"WARNING: not found - {split_dir}")
             continue
         for root, _, files in os.walk(split_dir):
             if "visible.json" not in files:
@@ -80,7 +66,6 @@ def load_scales():
     return records
 
 
-# ── Plotting ─────────────────────────────────────────────────────────────────
 def plot(records):
     splits_arr = np.array([r[0] for r in records])
     scales_arr = np.array([r[1] for r in records])
@@ -88,10 +73,8 @@ def plot(records):
 
     fig, axes = plt.subplots(1, 2, figsize=(15, 5))
 
-    # ── Left: scale histogram with category shading ──────────────────────────
+    # left: scale histogram with category shading
     ax = axes[0]
-
-    # shade category regions first (behind bars)
     for (label, lo, hi), color in zip(REGIONS, REGION_COLORS):
         ax.axvspan(lo, hi, alpha=0.15, color=color, zorder=0)
 
@@ -101,19 +84,18 @@ def plot(records):
     for thresh in BOUNDARIES:
         ax.axvline(thresh, color="crimson", linestyle="--", linewidth=1.2, zorder=3)
 
-    # category labels near the top
     ymax = ax.get_ylim()[1]
     for (label, lo, hi), color in zip(REGIONS, REGION_COLORS):
         mid = (lo + hi) / 2
         ax.text(mid, ymax * 0.93, label, ha="center", va="top",
                 fontsize=9, fontweight="bold", color="black")
 
-    ax.set_xlabel("Scale √(w×h)  [pixels]")
+    ax.set_xlabel("Scale  $\\sqrt{w \\times h}$  [pixels]")
     ax.set_ylabel("Frame count")
     ax.set_title("Bounding-box scale distribution\nwith size-category boundaries")
     ax.set_xlim(0, 270)
 
-    # ── Right: instance count per category per split ──────────────────────────
+    # right: instance count per category per split
     ax = axes[1]
     cat_order   = ["Tiny", "Small", "Medium", "Large"]
     split_order = ["train", "val", "test"]
@@ -146,7 +128,6 @@ def plot(records):
     ax.set_title("Instance count per size category per split")
     ax.legend(title="Size category")
 
-    # overall totals as subtitle
     totals = {cat: int(np.sum(cats_arr == cat)) for cat in cat_order}
     total_str = "  |  ".join(f"{c}: {totals[c]:,}" for c in cat_order)
     fig.suptitle(f"Total: {len(records):,} instances     [{total_str}]",
@@ -158,7 +139,6 @@ def plot(records):
     plt.close(fig)
     print(f"Saved: {out}")
 
-    # print table
     print(f"\n{'Category':<10} {'Train':>10} {'Val':>10} {'Test':>10} {'Total':>10}")
     print("-" * 45)
     for cat in cat_order:

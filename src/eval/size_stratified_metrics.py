@@ -1,41 +1,15 @@
 #!/usr/bin/env python3
-# coding: utf-8
-"""
-size_stratified_metrics.py
---------------------------
-Compute Precision, Recall, F1, and mAP@0.5:0.95 stratified by UAV size category
-for a YOLOv5m model across all fog severity levels (answers SQ2 / H2).
-Supersedes the earlier recall-only script.
+"""Precision, Recall, F1 and mAP@0.5:0.95 stratified by UAV size category for a
+YOLOv5m model across all fog levels, plus an 'all' row (no size filter) that
+reproduces the aggregate metrics as a sanity check.
 
-Size categories (geometric mean scale s = sqrt(w_px * h_px)):
-    tiny   [0, 10)
-    small  [10, 50)
-    medium [50, 90)
-    large  [90, inf)
-An 'all' row (no size filter) is also produced; it should closely reproduce the
-aggregate Table 3 / Table 4 numbers as a sanity check.
+Size categories use geometric-mean scale sqrt(w*h):
+    tiny [0,10), small [10,50), medium [50,90), large [90,inf).
+Per-category attribution follows COCO area-range AP semantics: a TP is counted
+under the GT category it matched; an unmatched prediction is an FP under its own
+box-size category. Inference mirrors val.py (conf 0.001, NMS IoU 0.6).
 
-Per-category attribution (== COCO area-range AP semantics):
-    - TP for category c : prediction matched to a GT whose size is in c
-    - FP for category c : unmatched prediction whose OWN box size is in c
-    - predictions matched to GT of another category are ignored for c
-Metrics:
-    - mAP@0.5:0.95 : mean of 101-point interpolated AP over IoU 0.5..0.95
-    - P, R, F1     : at the best-F1 confidence operating point at IoU 0.5
-Inference settings mirror YOLOv5 val.py (conf 0.001, NMS IoU 0.6) so the 'all'
-row matches the standard aggregate metrics.
-
-Diagnostic modes:
-    --list   list dataset folders found (+ image counts), then exit
-    --scan   print GT size-category counts for the test split, then exit
-
-Run inside the yolo venv on a GPU node:
-    module load 2023 Python/3.11.3-GCCcore-12.3.0 CUDA/12.1.1
-    source $HOME/envs/yolo/bin/activate
-    python size_stratified_metrics.py --scan      # inspect category counts first
-    python size_stratified_metrics.py             # full run
-
-For the resolution experiment, set IMG_SIZE = 1280 and change OUT_CSV.
+Modes: --list (dataset folders), --scan (GT size counts), default (run).
 """
 
 import argparse
@@ -48,12 +22,12 @@ import cv2
 import numpy as np
 import torch
 
-# ============================ CONFIG ============================
-YOLOV5_DIR = os.path.expanduser("~/thesis-1/yolo/yolov5")
-WEIGHTS    = os.path.expanduser("~/thesis-1/yolo/yolov5/runs/train/results8/weights/best.pt")
+REPO_ROOT  = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+YOLOV5_DIR = os.path.join(REPO_ROOT, "yolov5")
+WEIGHTS    = os.path.join(YOLOV5_DIR, "runs", "train", "results8", "weights", "best.pt")
 # Fog-aware model: point WEIGHTS at its best.pt and change OUT_CSV.
 
-DATA_BASE    = "/scratch-shared/glevybirkental/prepared_dataset"
+DATA_BASE    = os.path.join(REPO_ROOT, "prepared_dataset")
 CLEAR_FOLDER = "visible"
 FOG_GLOB     = "visible_fog_i*_beta*"
 SPLIT        = "test"
@@ -72,8 +46,7 @@ SIZE_BINS = [
     ("large",  90,  1e9),
 ]
 
-OUT_CSV = os.path.expanduser("~/thesis-1/results/metrics/size_stratified_metrics.csv")
-# ================================================================
+OUT_CSV = os.path.join(REPO_ROOT, "results", "metrics", "size_stratified_metrics.csv")
 
 CATS = [n for n, _, _ in SIZE_BINS] + ["all"]
 

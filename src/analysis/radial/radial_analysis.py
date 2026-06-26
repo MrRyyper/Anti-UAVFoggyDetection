@@ -1,23 +1,5 @@
-# coding: utf-8
-"""
-radial_prior_analysis.py
-------------------------
-Analyses whether bounding box size correlates with distance from image center
-across the Anti-UAV300 RGB annotation files.
-
-If larger boxes (closer UAVs) cluster near center and smaller boxes
-(farther UAVs) appear more toward the periphery, this supports the
-radial depth prior used in the fog simulation.
-
-Outputs (saved to ./radial_analysis/)
---------------------------------------
-- radial_prior_scatter.png  : scatter of bbox size vs radial distance
-- radial_prior_binned.png   : mean bbox size per radial distance bin
-- radial_prior_stats.txt    : Pearson r, Spearman rho, p-values
-
-Place this script inside thesis-1/ and run:
-    python radial_prior_analysis.py
-"""
+"""Correlate UAV bbox size with radial distance from the image centre,
+to test the depth prior used in the fog simulation."""
 
 import os
 import json
@@ -25,7 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
-# ── Config ────────────────────────────────────────────────────────────────────
 _HERE     = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
 ANN_DIR   = os.path.join(REPO_ROOT, "Anti-UAV-RGBT")
@@ -35,21 +16,13 @@ IMG_H     = 1080
 OUT_DIR   = os.path.join(REPO_ROOT, "results", "figures", "radial")
 
 
-# ── Annotation loading ────────────────────────────────────────────────────────
 def load_annotations():
-    """
-    Walk split directories and load all visible.json files.
-    Anti-UAV300 format:
-        {"exist": [1,1,0,...], "gt_rect": [[x,y,w,h], ...]}
-    Returns:
-        bbox_sizes   : sqrt(w*h) for each visible instance
-        radial_dists : normalised radial distance of bbox centre from image centre
-    """
+    """Return (bbox_sizes, radial_dists) over all visible.json instances."""
     bbox_sizes   = []
     radial_dists = []
 
     cx, cy   = IMG_W / 2.0, IMG_H / 2.0
-    max_dist = np.sqrt(cx ** 2 + cy ** 2)   # normalise to [0,1]
+    max_dist = np.sqrt(cx ** 2 + cy ** 2)
 
     for split in SPLITS:
         split_dir = os.path.join(ANN_DIR, split)
@@ -82,10 +55,7 @@ def load_annotations():
                 if w <= 0 or h <= 0:
                     continue
 
-                # geometric mean scale
                 scale = np.sqrt(w * h)
-
-                # bbox centre radial distance, normalised
                 bx   = x + w / 2.0
                 by   = y + h / 2.0
                 dist = np.sqrt((bx - cx) ** 2 + (by - cy) ** 2) / max_dist
@@ -96,7 +66,6 @@ def load_annotations():
     return np.array(bbox_sizes), np.array(radial_dists)
 
 
-# ── Plotting ──────────────────────────────────────────────────────────────────
 def plot_scatter(bbox_sizes, radial_dists):
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.scatter(radial_dists, bbox_sizes, alpha=0.15, s=4, color="steelblue")
@@ -149,7 +118,6 @@ def plot_binned(bbox_sizes, radial_dists, n_bins=10):
     print(f"Saved: {out}")
 
 
-# ── Stats ─────────────────────────────────────────────────────────────────────
 def save_stats(bbox_sizes, radial_dists):
     r,   p_pearson  = stats.pearsonr(radial_dists, bbox_sizes)
     rho, p_spearman = stats.spearmanr(radial_dists, bbox_sizes)
@@ -174,13 +142,8 @@ def save_stats(bbox_sizes, radial_dists):
     print(f"\nSaved: {out}")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-
-    print(f"Loading annotations from : {ANN_DIR}")
-    print(f"Splits                   : {SPLITS}")
-
     bbox_sizes, radial_dists = load_annotations()
 
     if len(bbox_sizes) == 0:
